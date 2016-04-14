@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp" xmlns:context="http://www.springframework.org/schema/context" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/current/mule-amqp.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <context:property-placeholder location="${mule.env}.properties"/>
+    <amqp:connector name="AMQP_0_9_Connector" validateConnections="true" host="${rabbit.host}" port="${rabbit.port}"  username="${rabbit.username}" password="${rabbit.password}" ackMode="MANUAL" prefetchCount="1" doc:name="AMQP-0-9 Connector"/>
+    <flow name="FetchMessages" initialState="started" processingStrategy="synchronous">
+        <amqp:inbound-endpoint queueName="${rabbit.from_queue}" responseTimeout="10000" exchange-pattern="request-response" connector-ref="AMQP_0_9_Connector" doc:name="From"/>
+        <choice doc:name="Choice">
+            <when expression="#[!flowVars.containsKey('counter')]">
+                <set-variable variableName="counter" value="${amount}" doc:name="Set counter"/>
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Still going" message="TODO: #[flowVars.counter]"/>
+            </otherwise>
+        </choice>
+        <set-variable variableName="counter" value="#[flowVars.counter-1]" doc:name="Counter - 1"/>
+        <choice doc:name="Counter zero?">
+            <when expression="#[flowVars.counter&lt;=0]">
+                <logger message="READY" level="INFO" doc:name="Done"/>
+            </when>
+            <otherwise>
+                <amqp:outbound-endpoint queueName="${rabbit.to_queue}" responseTimeout="10000" exchange-pattern="request-response" connector-ref="AMQP_0_9_Connector" doc:name="Add To queue"/>
+                <amqp:outbound-endpoint queueName="${rabbit.from_queue}" responseTimeout="10000" exchange-pattern="request-response" connector-ref="AMQP_0_9_Connector" doc:name="Add From queue"/>
+                <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
+            </otherwise>
+        </choice>
+    </flow>
+</mule>

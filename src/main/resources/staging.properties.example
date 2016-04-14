@@ -1,0 +1,9 @@
+rabbit.host=
+rabbit.port=
+rabbit.username=
+rabbit.password=
+
+rabbit.from_queue=
+rabbit.to_queue=
+
+amount=
